@@ -1,0 +1,56 @@
+version: '3.3'
+
+services:
+    web:
+        image: nginx:stable-alpine
+        container_name: ${APP_NAME}.web-nginx
+        ports:
+            - 8080:80
+        volumes:
+            - ../src:/app
+            - ./nginx.conf:/etc/nginx/conf.d/default.conf
+            - ./var/log/nginx:/var/log/nginx
+        depends_on:
+            - php-fpm
+            - database
+
+    database:
+        image: postgres:13-alpine
+        container_name: ${APP_NAME}.database-postgres
+        ports:
+            - 5432:5432
+        environment:
+            - POSTGRES_DB=${DB_DATABASE}
+            - POSTGRES_USER=${DB_USERNAME}
+            - POSTGRES_PASSWORD=${DB_PASSWORD}
+            - PGDATA=/var/lib/postgresql/data/pgdata
+        volumes:
+            - ./var/pgdata:/var/lib/postgresql/data/pgdata
+
+    adminer:
+        image: adminer
+        restart: always
+        ports:
+            - 8090:8080
+        depends_on:
+            - database
+
+    php-fpm:
+        build:
+            context: .
+            dockerfile: php.dockerfile
+        container_name: ${APP_NAME}.php-fpm
+        working_dir: /app
+        volumes:
+            - ../src:/app
+        ports:
+            - 9000:9000
+
+    composer:
+        image: composer
+        restart: never
+        environment:
+            - COMPOSER_CACHE_DIR=/var/cache/composer
+        volumes:
+            - ../src:/app
+            - ./var/:/var
